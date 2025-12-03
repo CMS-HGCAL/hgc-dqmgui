@@ -12,6 +12,8 @@
 #include "TMath.h"
 #include "TText.h"
 #include "TPaletteAxis.h"
+#include "TPolyMarker.h"
+#include "TProfile.h"
 #include "TH2F.h"
 #include "TLine.h"
 #include "TList.h"
@@ -24,11 +26,19 @@
 class HGCalRenderPlugin : public DQMRenderPlugin {
 public:
   virtual bool applies(const VisDQMObject &o, const VisDQMImgInfo &) {
-    if (o.name.find("HGCAL/Modules") != std::string::npos)
+    if (o.name.find("HGCAL") != std::string::npos)
+      return true;
+    else if (o.name.find("HGCAL/Modules") != std::string::npos)
       return true;
     else if (o.name.find("HGCAL/Layers") != std::string::npos)
       return true;
     else if (o.name.find("HGCAL/Digis") != std::string::npos)
+      return true;
+    else if (o.name.find("HGCAL/EndCap") != std::string::npos)
+      return true;
+    else if (o.name.find("HGCAL/FED") != std::string::npos)
+      return true;
+    else if (o.name.find("HGCAL/Quick") != std::string::npos)
       return true;
     else
       return false;
@@ -36,28 +46,43 @@ public:
 
   virtual void preDraw(TCanvas *c, const VisDQMObject &o, const VisDQMImgInfo &, VisDQMRenderInfo &) {
     c->cd();
+    // default values
     c->SetRightMargin(0.15);
 
+    // customization for each ME type
     if (dynamic_cast<TH2Poly *>(o.object)) {
+      c->SetLeftMargin(0.10);
       preDrawHex(o);
     } else if (dynamic_cast<TH2F *>(o.object)) {
+      c->SetLeftMargin(0.20);
       preDrawTH2(c, o);
     } else if (dynamic_cast<TH1F *>(o.object)) {
+      c->SetLeftMargin(0.10);
       preDrawTH1(c, o);
     }
   }
 
   virtual void postDraw(TCanvas *c, const VisDQMObject &o, const VisDQMImgInfo &) {
-    if (dynamic_cast<TH2 *>(o.object))
-      postDrawTH2(c, o);
-    if (dynamic_cast<TH2Poly *>(o.object))
+    if (dynamic_cast<TH2Poly *>(o.object)) {
+      gStyle->SetTextSize();
       postDrawHex(c, o);
+    } else if (dynamic_cast<TString *>(o.object)) {
+      gStyle->SetTextSize(0.20);
+    } else if (dynamic_cast<TH1F *>(o.object)) {
+      gStyle->SetOptStat("nemruo"); // including underflow and overflow
+      c->Modified();
+      c->Update();
+    } else if (dynamic_cast<TH2 *>(o.object)) {
+      gStyle->SetTextSize();
+      postDrawTH2(c, o);
+    }
   }
 
 private:
   void preDrawTH1(TCanvas *c __attribute__((unused)), const VisDQMObject &o) {
     TH1 *obj = dynamic_cast<TH1 *>(o.object);
     assert(obj);
+    obj->SetOption("hist");
   }
 
   void preDrawHex(const VisDQMObject &o) {
@@ -65,19 +90,62 @@ private:
     TString name(obj->GetName());
     assert(obj);
 
-    //gStyle->SetPalette(kViridis);
-    gStyle->SetPalette(kBird);
+    gStyle->SetPalette(kSunset);
+    TColor::InvertPalette();
     obj->SetOption("colz");
 
     //customize display of hex plots
-    if (name.Contains("hex_channelId") || name.Contains("hex_hgcrocPin") || name.Contains("hex_sicellPadId")) {
+    if (name.Contains("hex_econdQualityLayer")) {
+      Int_t colors[5] = {kGreen+1, kSpring+10, kOrange, kOrange+1, kRed};
+      gStyle->SetPalette(5, colors);
+
+      obj->SetMinimum(0.5); // ensure color scale for grade quality starts at 0.5
+      obj->SetMaximum(5.5); // ensure color scale for grade quality ends at 5.5
+
+      // Hide z-labels & Add title
+      obj->GetZaxis()->SetLabelSize(0);
+      obj->GetZaxis()->SetTickLength(0);
+      obj->GetZaxis()->SetTitle("Issue Severity");
+      obj->GetZaxis()->SetTitleSize(0.04);
+
       gStyle->SetPaintTextFormat(".0f");
       obj->SetMarkerSize(0.7);
+      obj->SetOption("colz");
+
+    } else if (name.Contains("hex_stdadc")) {
+      // resctrict noize range in [0.0, 2.0]
+      obj->SetMinimum(0.0);
+      obj->SetMaximum(2.0);
+
+      TList *functions = obj->GetListOfFunctions();
+      if (functions) {
+          TIter next(functions);
+          TObject *funcObj;
+          while ((funcObj = next())) {
+              if (funcObj->InheritsFrom("TPolyMarker")) {
+                  TPolyMarker *marker = (TPolyMarker*)funcObj;
+                  marker->SetMarkerSize(1.5);
+                  marker->SetMarkerColor(kWhite);
+                  marker->SetMarkerStyle(5); // or 52
+                  break; // assume only one TPolyMarker
+              }
+          }
+      }
+
+    } else if (name.Contains("hex_channelId") || name.Contains("hex_hgcrocPin") || name.Contains("hex_sicellPadId")) {
+      gStyle->SetPaintTextFormat(".0f");
+      obj->SetMarkerSize(0.7);
+      obj->SetOption("colz");
+    } else if (name.BeginsWith("module_") || name.BeginsWith("hex_avgPayloadLayer") || name.BeginsWith("hex_stdPayloadLayer")) {
+      // display text info for hexagonal plots at layer-level
+      if (name.Contains("std")) { gStyle->SetPaintTextFormat(".2f"); }
+      else { gStyle->SetPaintTextFormat(".0f"); }
+      obj->SetMarkerSize(2.0);
       obj->SetOption("colztext");
     } else if (name.Contains("_layer_")) {
       gStyle->SetPaintTextFormat(".2e");
       obj->SetMarkerSize(2.0);
-      obj->SetOption("colztext");
+      obj->SetOption("colz");
     } else {
       gStyle->SetPaintTextFormat(".2f");
       obj->SetMarkerSize(0.7);
@@ -85,12 +153,6 @@ private:
     }
 
     obj->SetStats(kFALSE);
-    obj->GetXaxis()->CenterLabels();
-    obj->GetYaxis()->CenterLabels();
-
-    //c->SetTicks(1,1);
-    //c->SetGridx();
-    //c->SetGridy();
 
   }  // end of preDrawHex
 
@@ -98,38 +160,73 @@ private:
     TH2F *obj = dynamic_cast<TH2F *>(o.object);
     assert(obj);
 
-    // This applies to all
+    // Set up canvas
     gStyle->SetCanvasBorderMode(0);
     gStyle->SetCanvasColor(kWhite);
     gStyle->SetPadBorderMode(0);
     gStyle->SetPadBorderSize(0);
-    gStyle->SetOptStat(10);
 
-    if ( (o.name.find("econd") != std::string::npos) || (o.name.find("Quality") != std::string::npos) ) {
-      gStyle->SetOptStat(10);
-      gStyle->SetPalette(kCherry);
-      TColor::InvertPalette();
-      obj->SetStats(kTRUE);
-    } else {
-      gStyle->SetOptStat(1111);
-      gStyle->SetPalette(1);
-      obj->SetStats(kTRUE);
-    }
-
+    // Set up the histogram
     obj->SetOption("colz");
-    obj->GetXaxis()->SetNdivisions(-510);
-    obj->GetYaxis()->SetNdivisions(-510);
-    obj->GetXaxis()->CenterLabels();
-    obj->GetYaxis()->CenterLabels();
+    obj->GetXaxis()->SetNdivisions(510);
+    obj->GetYaxis()->SetNdivisions(510);
     c->SetGridx();
     c->SetGridy();
+
+    // acquire hist name
+    TString name(obj->GetName());
+    bool isSpecificQualityHist = name.Contains("econdQualityLayer") || (name=="econdQuality") || (name=="econdQualityLS") || (name=="layerQualityLS");
+    bool isCorrelation = name.Contains("Corr");
+    bool isGeneralEcondOrQuality = (o.name.find("econd") != std::string::npos) || (o.name.find("Quality") != std::string::npos);
+
+    if (isSpecificQualityHist) {
+        Int_t colors[5] = {kGreen+1, kSpring+10, kOrange, kOrange+1, kRed};
+        gStyle->SetPalette(5, colors);
+        gStyle->SetOptStat(10);
+        gStyle->SetPaintTextFormat(".0f");
+
+        obj->SetMinimum(0.5);
+        obj->SetMaximum(5.5);
+        obj->SetMarkerSize(0.7);
+        obj->SetStats(0);
+
+        // Hide z-labels & Add title
+        obj->GetZaxis()->SetLabelSize(0);
+        obj->GetZaxis()->SetTickLength(0);
+        obj->GetZaxis()->SetTitle("Issue Severity");
+        obj->GetZaxis()->SetTitleSize(0.04);
+
+    } else if (isCorrelation) {
+        gStyle->SetPalette(kSunset);
+        TColor::InvertPalette();
+        obj->SetStats(0);
+
+    } else if (isGeneralEcondOrQuality) {
+        gStyle->SetOptStat(10);
+        gStyle->SetPalette(kSunset);
+        TColor::InvertPalette();
+        obj->SetStats(0);
+
+    } else {
+        gStyle->SetOptStat(1111);
+        gStyle->SetPalette(kSunset);
+        TColor::InvertPalette();
+        obj->SetStats(0);
+    }
 
   }  // end of preDrawTH2
 
   void postDrawTH2(TCanvas *c __attribute__((unused)), const VisDQMObject &o) {
     TH2 *obj = dynamic_cast<TH2 *>(o.object);
     assert(obj);
-    // post draw for each displayed plots
+    TString name(obj->GetName());
+
+    bool isSpecificQualityHist = name.Contains("Quality") || (name=="econd_lastLS");
+    if(isSpecificQualityHist) return; //  no need to add a profile
+
+    // adding profile
+    TProfile *prof = obj->ProfileX((name+"_profile").Data(), 1, -1, "s");
+    prof->Draw("same");
 
   }  // End of postDrawTH2
 
@@ -138,15 +235,11 @@ private:
     TString name(obj->GetName());
     assert(obj);
 
-    // printf("[DEBUG-tmp] %s\n", name.Data());
-        // Get the palette axis
+    // Get the palette axis
     TPaletteAxis *palette = (TPaletteAxis*)obj->GetListOfFunctions()->FindObject("palette");
     if (palette) {
         // Adjust title offset (moves title away from axis)
         obj->GetZaxis()->SetTitleOffset(1.2);
-
-        // Rotate the title (angle in degrees)
-        // obj->GetZaxis()->SetTitleAngle(90);  // Vertical title // not working
 
         // You can also adjust other properties
         obj->GetZaxis()->SetTitleFont(42);
@@ -155,129 +248,6 @@ private:
         // Force redraw to apply changes
         c->Update();
     }
-
-    //--------------------------------------------------
-    // Draw auxiliary lines
-    //--------------------------------------------------
-    std::vector<std::vector<double>> x_coords;
-    std::vector<std::vector<double>> y_coords;
-
-    if (name.Contains("_module_")) {
-      x_coords = aux::x_coords_LD_full;
-      y_coords = aux::y_coords_LD_full;
-    } else if (name.Contains("LD_0")) {
-      x_coords = aux::x_coords_LD_full;
-      y_coords = aux::y_coords_LD_full;
-    } else if (name.Contains("LD_3")) {
-      x_coords = aux::x_coords_LD_3;
-      y_coords = aux::y_coords_LD_3;
-    } else if (name.Contains("LD_4")) {
-      x_coords = aux::x_coords_LD_4;
-      y_coords = aux::y_coords_LD_4;
-    } else if (name.Contains("HD_0")) {
-      x_coords = aux::x_coords_HD_full;
-      y_coords = aux::y_coords_HD_full;
-    }
-
-    bool drawLine = true;
-    if (drawLine) {
-      TLine line;
-      line.SetLineStyle(1);
-      line.SetLineColor(kRed-7);
-      line.SetLineWidth(2);
-
-      for (unsigned iline = 0; iline < x_coords.size(); ++iline) {
-        const auto &x = x_coords.at(iline);
-        const auto &y = y_coords.at(iline);
-        for (unsigned j = 0; j < x.size() - 1; ++j) {
-          line.DrawLine(x[j], y[j], x[j + 1], y[j + 1]);
-        }
-      }
-    }
-
-    bool drawText = true;
-    if (drawText) {
-      TText text;
-      text.SetTextAlign(22);
-      text.SetTextFont(43);
-      text.SetTextSize(12);
-
-      if (name.Contains("HD") || name.Contains("MH")) {
-        double theta1 = 0.;
-        double theta2 = 4 * TMath::Pi() / 3.;
-        double theta3 = 2 * TMath::Pi() / 3.;
-
-        std::vector<double> theta_angle_text = {0, 0, 120, 120, -120, -120};
-        std::vector<double> theta_coordinate_text = {theta1, theta1, theta2, theta2, theta3, theta3};
-        std::vector<double> x_coordinate_text = {-6.25, 6.25, -6.25, 6.25, -6.25, 6.25};
-        std::vector<double> y_coordinate_text = {26, 26, 26, 26, 26, 26};
-        std::vector<TString> v_texts = {"chip-0", "chip-1", "chip-2", "chip-3", "chip-4", "chip-5"};
-
-        double arbUnit_to_cm = 6.9767 / 20.;
-
-        // evaluate (r, phi) and apply rotation
-        for (int i = 0; i < 6; ++i) {
-          text.SetTextAngle(theta_angle_text[i]);
-          double theta = theta_coordinate_text[i];
-          double cos_theta = TMath::Cos(theta);
-          double sin_theta = TMath::Sin(theta);
-
-          double x = x_coordinate_text[i];
-          double y = y_coordinate_text[i];
-          double r = sqrt(pow(x, 2) + pow(y, 2));
-          double cos_phi = x / r;
-          double sin_phi = y / r;
-          x = r * (cos_phi * cos_theta + sin_phi * sin_theta) * arbUnit_to_cm;
-          y = r * (sin_phi * cos_theta - cos_phi * sin_theta) * arbUnit_to_cm;
-
-          text.DrawText(x, y, v_texts[i]);
-        }
-
-      } else if (name.Contains("LD") || name.Contains("ML") || name.Contains("_module")) {  // LD
-        double theta1 = -TMath::Pi() / 3.;
-        double theta2 = TMath::Pi() / 3.;
-        double theta3 = TMath::Pi();
-        std::vector<double> theta_angle_text = {60, 60, -60, -60, 0, 0};
-        std::vector<double> theta_coordinate_text = {theta1, theta1, theta2, theta2, theta3, theta3};
-        std::vector<double> x_coordinate_text = {-6.25, 6.25, -6.25, 6.25, -6.25, 6.25};
-        std::vector<double> y_coordinate_text = {26, 26, 26, 26, 26, 26};
-        std::vector<TString> v_texts = {"chip-0, half-1", "chip-0, half-0", "chip-1, half-1", "chip-1, half-0", "chip-2, half-1", "chip-2, half-0"};
-
-        double arbUnit_to_cm = 6.9767 / 20.;
-
-        // evaluate (r, phi) and apply rotation
-        for (int i = 0; i < 6; ++i) {
-          if (name.Contains("LD_3") && (i == 2 || i == 3 || i == 4))
-            continue;
-          if (name.Contains("LD_4") && (i == 0 || i == 1 || i == 5))
-            continue;
-          text.SetTextAngle(theta_angle_text[i]);
-          double theta = theta_coordinate_text[i];
-          double cos_theta = TMath::Cos(theta);
-          double sin_theta = TMath::Sin(theta);
-
-          double x = x_coordinate_text[i];
-          double y = y_coordinate_text[i];
-          double r = sqrt(pow(x, 2) + pow(y, 2));
-          double cos_phi = x / r;
-          double sin_phi = y / r;
-          x = r * (cos_phi * cos_theta + sin_phi * sin_theta) * arbUnit_to_cm;
-          y = r * (sin_phi * cos_theta - cos_phi * sin_theta) * arbUnit_to_cm;
-
-          if (name.Contains("LD_3") && (i == 5))
-            text.DrawText(x, y, "chip-1, half-0");
-          else if (name.Contains("LD_4") && (i == 2))
-            text.DrawText(x, y, "chip-1, half-0");
-          else if (name.Contains("LD_4") && (i == 3))
-            text.DrawText(x, y, "chip-0, half-1");
-          else if (name.Contains("LD_4") && (i == 4))
-            text.DrawText(x, y, "chip-0, half-0");
-          else
-            text.DrawText(x, y, v_texts[i]);
-        }
-      }
-    }
-
   }  // End of postDrawHex
 };
 
