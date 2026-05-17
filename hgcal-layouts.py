@@ -9,7 +9,7 @@ digis = "digis information"
 tb_modules = [
     'ML_F3WC_IH0197', 'ML_F3WC_IH0196', 'ML_F3WC_IH0198', 'ML_F3WC_IH0190',
     'ML_F3WC_IH0192', 'ML_F3WC_IH0191', 'ML_F3WC_IH0194', 'ML_F3WC_IH0182',
-    'ML_F3WC_IH0180', 'ML_F3WC_IH0199', 'ML_NA',          'ML_NA'
+    'ML_F3WC_IH0180', 'ML_F3WC_IH0199', 'TL-L44S1-TB2025'
 ]
 
 # Layout configurations for DQM GUI with placeholders: {layer}, {module}
@@ -30,16 +30,16 @@ layout_configs = [
     # TrigPhase layouts
     #----------------------------------------------------------------------
     ("TrigPhase/Trigger Phase - ADC @ Layer {layer}",
-     "HGCAL/EndCap_Minus/Layer_{layer}/Cassette_1/Module_{module}/seedadcvstrigtime"),
+     "HGCAL/EndCap_Minus/Layer_{layer}/Cassette_1/(u8-v5) {module}/seedadcvstrigtime"),
 
     ("TrigPhase/Trigger Phase - ToA @ Layer {layer}",
-     "HGCAL/EndCap_Minus/Layer_{layer}/Cassette_1/Module_{module}/seedtoavstrigtime"),
+     "HGCAL/EndCap_Minus/Layer_{layer}/Cassette_1/(u8-v5) {module}/seedtoavstrigtime"),
 
     #----------------------------------------------------------------------
     # ADC layouts
     #----------------------------------------------------------------------
     ("ADC/Average ADC @ Layer {layer}",
-     "HGCAL/EndCap_Minus/Layer_{layer}/Cassette_1/Module_{module}/avgadc"),
+     "HGCAL/EndCap_Minus/Layer_{layer}/Cassette_1/(u8-v5) {module}/avgadc"),
 
     #----------------------------------------------------------------------
     # TOT layouts
@@ -48,7 +48,7 @@ layout_configs = [
      "HGCAL/EndCap_Minus/Layer_{layer}/Cassette_1/hex_avgtot_layer_{layer}"),
 
     ("TOT/TOT @ Layer {layer}",
-     "HGCAL/EndCap_Minus/Layer_{layer}/Cassette_1/Module_{module}/tot"),
+     "HGCAL/EndCap_Minus/Layer_{layer}/Cassette_1/(u8-v5) {module}/tot"),
 
     #----------------------------------------------------------------------
     # TOA layouts
@@ -57,7 +57,7 @@ layout_configs = [
      "HGCAL/EndCap_Minus/Layer_{layer}/Cassette_1/hex_avgtoa_layer_{layer}"),
 
     ("TOA/TOA @ Layer {layer}",
-     "HGCAL/EndCap_Minus/Layer_{layer}/Cassette_1/Module_{module}/toa"),
+     "HGCAL/EndCap_Minus/Layer_{layer}/Cassette_1/(u8-v5) {module}/toa"),
 
     #----------------------------------------------------------------------
     # RecHits layouts
@@ -81,8 +81,8 @@ layout_configs = [
 #           [{ 'path': "HGCAL/EndCap_Minus/Layer_1/Cassette_1/hex_avgadc_layer_1", 'description': quality + hgcallink }])
 #------------------------------------------------------------------------------------------------------------------------
 
-for i in range(12):
-    layer = i + 1
+for i, layer in enumerate([1,2,3,4,5,6,7,8,9,10,44]):
+
     module = tb_modules[i]
 
     for title_template, path_template in layout_configs:
