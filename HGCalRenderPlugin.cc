@@ -19,9 +19,14 @@
 #include "TList.h"
 #include "TH2Poly.h"
 #include "TString.h"
+#include "TGraph.h"
 #include "HGCalAuxiliaryInfo.h"
 
 #include <iostream>
+
+#include "guidelines_rotated_m5p0.h"
+#include "guidelines_rotated_m15p0.h"
+#include "guidelines_rotated_m25p0.h"
 
 class HGCalRenderPlugin : public DQMRenderPlugin {
 public:
@@ -266,147 +271,92 @@ private:
     TString name(obj->GetName());
     assert(obj);
 
-    // printf("[DEBUG-tmp] %s\n", name.Data());
-        // Get the palette axis
-    TPaletteAxis *palette = (TPaletteAxis*)obj->GetListOfFunctions()->FindObject("palette");
+    // Palette
+    TPaletteAxis *palette =
+        (TPaletteAxis*)obj->GetListOfFunctions()->FindObject("palette");
+
     if (palette) {
-        // Adjust title offset (moves title away from axis)
         obj->GetZaxis()->SetTitleOffset(1.2);
-
-        // Rotate the title (angle in degrees)
-        // obj->GetZaxis()->SetTitleAngle(90);  // Vertical title // not working
-
-        // You can also adjust other properties
         obj->GetZaxis()->SetTitleFont(42);
         obj->GetZaxis()->SetTitleSize(0.035);
-
-        // Force redraw to apply changes
-        c->Update();
     }
 
-    // //--------------------------------------------------
-    // // Draw auxiliary lines
-    // //--------------------------------------------------
-    // std::vector<std::vector<double>> x_coords;
-    // std::vector<std::vector<double>> y_coords;
+    bool drawAuxLines = (name=="hex_avgadc_layer_44");
 
-    // if (name.Contains("_module_")) {
-    //   x_coords = aux::x_coords_LD_full;
-    //   y_coords = aux::y_coords_LD_full;
-    // } else if (name.Contains("LD_0")) {
-    //   x_coords = aux::x_coords_LD_full;
-    //   y_coords = aux::y_coords_LD_full;
-    // } else if (name.Contains("LD_3")) {
-    //   x_coords = aux::x_coords_LD_3;
-    //   y_coords = aux::y_coords_LD_3;
-    // } else if (name.Contains("LD_4")) {
-    //   x_coords = aux::x_coords_LD_4;
-    //   y_coords = aux::y_coords_LD_4;
-    // } else if (name.Contains("HD_0")) {
-    //   x_coords = aux::x_coords_HD_full;
-    //   y_coords = aux::y_coords_HD_full;
-    // }
+    // --------------------------------------------------
+    // Auxiliary lines
+    // --------------------------------------------------
+    if(drawAuxLines) {
 
-    // bool drawLine = true;
-    // if (drawLine) {
-    //   TLine line;
-    //   line.SetLineStyle(1);
-    //   line.SetLineColor(kRed-7);
-    //   line.SetLineWidth(2);
+        for (int i = 0; i < guidelines_m5deg::n_hlines; ++i) {
+            drawAuxGraph(
+                c,
+                Form("aux_m5deg_%d", i),
+                guidelines_m5deg::hlines_n[i],
+                guidelines_m5deg::hlines_x[i],
+                guidelines_m5deg::hlines_y[i]
+            );
+        }
 
-    //   for (unsigned iline = 0; iline < x_coords.size(); ++iline) {
-    //     const auto &x = x_coords.at(iline);
-    //     const auto &y = y_coords.at(iline);
-    //     for (unsigned j = 0; j < x.size() - 1; ++j) {
-    //       line.DrawLine(x[j], y[j], x[j + 1], y[j + 1]);
-    //     }
-    //   }
-    // }
+        for (int i = 0; i < guidelines_m15deg::n_hlines; ++i) {
+            drawAuxGraph(
+                c,
+                Form("aux_m15deg_%d", i),
+                guidelines_m15deg::hlines_n[i],
+                guidelines_m15deg::hlines_x[i],
+                guidelines_m15deg::hlines_y[i]
+            );
+        }
 
-    // bool drawText = true;
-    // if (drawText) {
-    //   TText text;
-    //   text.SetTextAlign(22);
-    //   text.SetTextFont(43);
-    //   text.SetTextSize(12);
+        for (int i = 0; i < guidelines_m25deg::n_hlines; ++i) {
+            drawAuxGraph(
+                c,
+                Form("aux_m25deg_%d", i),
+                guidelines_m25deg::hlines_n[i],
+                guidelines_m25deg::hlines_x[i],
+                guidelines_m25deg::hlines_y[i]
+            );
+        }
 
-    //   if (name.Contains("HD") || name.Contains("MH")) {
-    //     double theta1 = 0.;
-    //     double theta2 = 4 * TMath::Pi() / 3.;
-    //     double theta3 = 2 * TMath::Pi() / 3.;
+        drawAuxGraph(
+            c,
+            "aux_left_boundary",
+            guidelines_m15deg::n_left_env_x,
+            guidelines_m15deg::left_env_x,
+            guidelines_m15deg::left_env_y
+        );
 
-    //     std::vector<double> theta_angle_text = {0, 0, 120, 120, -120, -120};
-    //     std::vector<double> theta_coordinate_text = {theta1, theta1, theta2, theta2, theta3, theta3};
-    //     std::vector<double> x_coordinate_text = {-6.25, 6.25, -6.25, 6.25, -6.25, 6.25};
-    //     std::vector<double> y_coordinate_text = {26, 26, 26, 26, 26, 26};
-    //     std::vector<TString> v_texts = {"chip-0", "chip-1", "chip-2", "chip-3", "chip-4", "chip-5"};
+        drawAuxGraph(
+            c,
+            "aux_right_boundary",
+            guidelines_m15deg::n_right_env_x,
+            guidelines_m15deg::right_env_x,
+            guidelines_m15deg::right_env_y
+        );
+    }
 
-    //     double arbUnit_to_cm = 6.9767 / 20.;
-
-    //     // evaluate (r, phi) and apply rotation
-    //     for (int i = 0; i < 6; ++i) {
-    //       text.SetTextAngle(theta_angle_text[i]);
-    //       double theta = theta_coordinate_text[i];
-    //       double cos_theta = TMath::Cos(theta);
-    //       double sin_theta = TMath::Sin(theta);
-
-    //       double x = x_coordinate_text[i];
-    //       double y = y_coordinate_text[i];
-    //       double r = sqrt(pow(x, 2) + pow(y, 2));
-    //       double cos_phi = x / r;
-    //       double sin_phi = y / r;
-    //       x = r * (cos_phi * cos_theta + sin_phi * sin_theta) * arbUnit_to_cm;
-    //       y = r * (sin_phi * cos_theta - cos_phi * sin_theta) * arbUnit_to_cm;
-
-    //       text.DrawText(x, y, v_texts[i]);
-    //     }
-
-    //   } else if (name.Contains("LD") || name.Contains("ML") || name.Contains("_module")) {  // LD
-    //     double theta1 = -TMath::Pi() / 3.;
-    //     double theta2 = TMath::Pi() / 3.;
-    //     double theta3 = TMath::Pi();
-    //     std::vector<double> theta_angle_text = {60, 60, -60, -60, 0, 0};
-    //     std::vector<double> theta_coordinate_text = {theta1, theta1, theta2, theta2, theta3, theta3};
-    //     std::vector<double> x_coordinate_text = {-6.25, 6.25, -6.25, 6.25, -6.25, 6.25};
-    //     std::vector<double> y_coordinate_text = {26, 26, 26, 26, 26, 26};
-    //     std::vector<TString> v_texts = {"chip-0, half-1", "chip-0, half-0", "chip-1, half-1", "chip-1, half-0", "chip-2, half-1", "chip-2, half-0"};
-
-    //     double arbUnit_to_cm = 6.9767 / 20.;
-
-    //     // evaluate (r, phi) and apply rotation
-    //     for (int i = 0; i < 6; ++i) {
-    //       if (name.Contains("LD_3") && (i == 2 || i == 3 || i == 4))
-    //         continue;
-    //       if (name.Contains("LD_4") && (i == 0 || i == 1 || i == 5))
-    //         continue;
-    //       text.SetTextAngle(theta_angle_text[i]);
-    //       double theta = theta_coordinate_text[i];
-    //       double cos_theta = TMath::Cos(theta);
-    //       double sin_theta = TMath::Sin(theta);
-
-    //       double x = x_coordinate_text[i];
-    //       double y = y_coordinate_text[i];
-    //       double r = sqrt(pow(x, 2) + pow(y, 2));
-    //       double cos_phi = x / r;
-    //       double sin_phi = y / r;
-    //       x = r * (cos_phi * cos_theta + sin_phi * sin_theta) * arbUnit_to_cm;
-    //       y = r * (sin_phi * cos_theta - cos_phi * sin_theta) * arbUnit_to_cm;
-
-    //       if (name.Contains("LD_3") && (i == 5))
-    //         text.DrawText(x, y, "chip-1, half-0");
-    //       else if (name.Contains("LD_4") && (i == 2))
-    //         text.DrawText(x, y, "chip-1, half-0");
-    //       else if (name.Contains("LD_4") && (i == 3))
-    //         text.DrawText(x, y, "chip-0, half-1");
-    //       else if (name.Contains("LD_4") && (i == 4))
-    //         text.DrawText(x, y, "chip-0, half-0");
-    //       else
-    //         text.DrawText(x, y, v_texts[i]);
-    //     }
-    //   }
-    // }
-
+    c->Modified();
+    c->Update();
   }  // End of postDrawHex
+
+  void drawAuxGraph( TCanvas *c, const char *name, int n, const double *x, const double *y) {
+      c->cd();
+  
+      TGraph *g = dynamic_cast<TGraph *>( c->GetListOfPrimitives()->FindObject(name) );
+  
+      if (!g) {
+          g = new TGraph(n, x, y);
+          g->SetName(name);
+  
+          g->SetLineWidth(2);
+          g->SetLineColor(TColor::GetColor("#1683D8"));
+  
+          // Let the pad/canvas own and delete it.
+          g->SetBit(kCanDelete);
+  
+          g->Draw("L same");
+      }
+  }
 };
 
 static HGCalRenderPlugin instance;
