@@ -175,9 +175,10 @@ private:
 
     // acquire hist name
     TString name(obj->GetName());
-    bool isSpecificQualityHist = name.Contains("econdQualityLayer") || (name=="econdQuality") || (name=="econdQualityLS") || (name=="layerQualityLS");
+    bool isSpecificQualityHist = name.Contains("Quality") and (name!="econdFineQuality");
     bool isCorrelation = name.Contains("Corr");
     bool isGeneralEcondOrQuality = (o.name.find("econd") != std::string::npos) || (o.name.find("Quality") != std::string::npos);
+    bool isCounter = name.Contains("summaryPerModule_FED");
 
     if (isSpecificQualityHist) {
         Int_t colors[5] = {kGreen+1, kSpring+10, kOrange, kOrange+1, kRed};
@@ -207,6 +208,10 @@ private:
         TColor::InvertPalette();
         obj->SetStats(0);
 
+    } else if (isCounter) {
+	obj->SetOption("text");
+        obj->SetStats(0);
+        // gStyle->SetPaintTextFormat(".3f");
     } else {
         gStyle->SetOptStat(1111);
         gStyle->SetPalette(kSunset);
@@ -221,7 +226,7 @@ private:
     assert(obj);
     TString name(obj->GetName());
 
-    bool isSpecificQualityHist = name.Contains("Quality") || (name=="econd_lastLS");
+    bool isSpecificQualityHist = name.Contains("Quality") || (name=="econd_lastLS") || name.Contains("summaryPerModule_FED");
     if(isSpecificQualityHist) return; //  no need to add a profile
 
     // adding profile

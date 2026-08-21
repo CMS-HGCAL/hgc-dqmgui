@@ -8,8 +8,8 @@ digis = "digis information"
 
 tb_modules = [
     'ML_F3WC_IH0197', 'ML_F3WC_IH0196', 'ML_F3WC_IH0198', 'ML_F3WC_IH0190',
-    'ML_F3WC_IH0192', 'ML_F3WC_IH0191', 'ML_F3WC_IH0194', 'ML_F3WC_IH0182',
-    'ML_F3WC_IH0180', 'ML_F3WC_IH0199', 'TL_L44S1_TB2025'
+    'ML_F3WD_IH0241', 'ML_F3WD_IH0266', 'ML_F3WC_IH0192', 'ML_F3WC_IH0191',
+    'ML_F3WC_IH0194', 'ML_F3WC_IH0182', 'ML_F3WC_IH0180', 'TL_L44S1'
 ]
 
 # Layout configurations for DQM GUI with placeholders: {layer}, {module}
@@ -59,6 +59,9 @@ layout_configs = [
     ("TOA/TOA @ Layer {layer}",
      "HGCAL/EndCap_Minus/Layer_{layer}/Cassette_1/({uv_coor}) {module}/toa"),
 
+    ("TOA/Occupancy @ Layer {layer}",
+     "HGCAL/EndCap_Minus/Layer_{layer}/Cassette_1/({uv_coor}) {module}/hex_toaoccupancy_module_{idx}"),
+
     #----------------------------------------------------------------------
     # RecHits layouts
     #----------------------------------------------------------------------
@@ -81,14 +84,28 @@ layout_configs = [
 #           [{ 'path': "HGCAL/EndCap_Minus/Layer_1/Cassette_1/hex_avgadc_layer_1", 'description': quality + hgcallink }])
 #------------------------------------------------------------------------------------------------------------------------
 
-uv_coordinates = ["u8-v5"]*10 + ["u0-v0"]
+uv_coordinates = ["u8-v5"]*11 + ["u0-v0"]
 
-for i, layer in enumerate([1,2,3,4,5,6,7,8,9,10,44]):
+dqmIdx_modules = [0, 1, 2, 3, 10, 6, 4, 5, 9, 7, 8, 11]
+
+for i, layer in enumerate([1,2,3,4,5,6,7,8,9,10,11,44]):
 
     module = tb_modules[i]
     uv_coor = uv_coordinates[i]
+    idx = dqmIdx_modules[i]
 
     for title_template, path_template in layout_configs:
-        title = title_template.format(layer=layer, module=module, uv_coor=uv_coor)
-        path = path_template.format(layer=layer, module=module, uv_coor=uv_coor)
+        title = title_template.format(layer=layer, module=module, uv_coor=uv_coor, idx=idx)
+        path = path_template.format(layer=layer, module=module, uv_coor=uv_coor, idx=idx)
+
+        if (layer==44 and 'hex' in path) and not ('toaoccupancy' in path):
+            path = path.replace('Cassette_1/',f'Cassette_1/({uv_coor}) {module}/')
+            path = path.replace(f'_layer_{layer}','_module_11')
+
         hgcallayout(dqmitems, title, [{'path': path, 'description': quality + hgcallink}])
+
+# FED counter
+hgcallayout(dqmitems, "FED/Counters - FED1601",
+      [{ 'path': "HGCAL/FED/FED_1601/summaryPerModule_FED1601", 'description': quality + hgcallink }])
+hgcallayout(dqmitems, "FED/Econ-D Quality - FED1601",
+      [{ 'path': "HGCAL/FED/FED_1601/econdQualityFED_1601", 'description': quality + hgcallink }])
