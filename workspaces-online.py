@@ -21,7 +21,10 @@ def hgcal_workspace(server,
                     histogram_types=('avgadc', 'stdadc')):
     """
     Build HGCAL workspace content list at script-write time.
-    The GUI will attempt to fetch all listed paths; missing plots are handled at runtime.
+    Entries point to layouts defined in hgcal-layouts.py (titles must match).
+    The GUI names quick collection entries by the last path component only,
+    so raw histogram paths sharing a basename (e.g. hex_avgadc_layer_25 in
+    every Cassette_N) would overwrite each other; layout titles are unique.
 
     Args:
         server      : DQM server object
@@ -30,33 +33,34 @@ def hgcal_workspace(server,
         cassettes   : list of cassette numbers, or None to skip cassette-level plots
         histogram_types : which histogram types to include per cassette
     """
+    # Histogram type -> layout title prefix used in hgcal-layouts.py
+    titles = {'avgadc': 'ADC', 'stdadc': 'Noise'}
     content = []
 
     for endcap in endcaps:
         for layer in layers:
-            base = f"HGCAL/EndCap_{endcap}/Layer_{layer}"
-
             # Module-level (always included)
-            content.append(f"{base}/module_avgadc_layer_{layer}")
+            content.append(f"HGCAL/Layouts/Average ADC per module - {endcap} - Layer {layer}")
 
             # Cassette-level
             if cassettes:
                 for cassette in cassettes:
                     for htype in histogram_types:
-                        content.append(f"{base}/Cassette_{cassette}/hex_{htype}_layer_{layer}")
+                        content.append(f"HGCAL/Layouts/{titles[htype]} - {endcap} - Layer {layer} - Cassette {cassette}")
 
     server.workspace(
         'DQMContent', 35,
         'Calorimeters', 'HGCAL',
         '^HGCAL/', '',
-        *content
+        *content,
+        hide_missing=True,
     )
 
 # --- Configuration block: edit only this section ---
 
 LAYERS     = [25, 26]
 ENDCAPS    = ['Minus']
-CASSETTES  = [1]
+CASSETTES  = [1,2,3,4,5,6]
 HIST_TYPES = ['avgadc', 'stdadc']
 
 hgcal_workspace(server,

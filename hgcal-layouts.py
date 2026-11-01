@@ -72,30 +72,34 @@ layout_configs = [
      "HGCAL/EndCap_Minus/Layer_{layer}/rechittimevsenergy"),
 ]
 
-LAYERS   = [25, 26]
-ENDCAP   = "Minus"
-CASSETTES = [1]
+LAYERS    = [25, 26]
+ENDCAPS   = ["Minus"]
+CASSETTES = [1,2,3,4,5,6]
 
+# Titles must stay in sync with hgcal_workspace() in workspaces-online.py.
+# The endcap must be part of the title itself (not a subfolder), because the
+# quick collection names entries by the last path component only.
 cassette_layout = []
-for layer in LAYERS:
-    base = f"HGCAL/EndCap_{ENDCAP}/Layer_{layer}"
+for endcap in ENDCAPS:
+    for layer in LAYERS:
+        base = f"HGCAL/EndCap_{endcap}/Layer_{layer}"
 
-    # Modules in a layer
-    cassette_layout.append(
-        (f"Average ADC per module - Layer {layer}",
-         f"{base}/module_avgadc_layer_{layer}")
-    )
+        # Modules in a layer
+        cassette_layout.append(
+            (f"Average ADC per module - {endcap} - Layer {layer}",
+             f"{base}/module_avgadc_layer_{layer}")
+        )
 
-    # Cassette-level
-    for cassette in CASSETTES:
-        cassette_base = f"{base}/Cassette_{cassette}"
-        cassette_layout += [
-            (f"ADC - Layer {layer} - Cassette {cassette}",
-             f"{cassette_base}/hex_avgadc_layer_{layer}"),
+        # Cassette-level
+        for cassette in CASSETTES:
+            cassette_base = f"{base}/Cassette_{cassette}"
+            cassette_layout += [
+                (f"ADC - {endcap} - Layer {layer} - Cassette {cassette}",
+                 f"{cassette_base}/hex_avgadc_layer_{layer}"),
 
-            (f"Noise - Layer {layer} - Cassette {cassette}",
-             f"{cassette_base}/hex_stdadc_layer_{layer}"),
-        ]
+                (f"Noise - {endcap} - Layer {layer} - Cassette {cassette}",
+                 f"{cassette_base}/hex_stdadc_layer_{layer}"),
+            ]
 
 ### "HGCAL/EventInfo/iRun"
 
